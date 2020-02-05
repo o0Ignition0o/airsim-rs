@@ -1,0 +1,16 @@
+[package]
+name = "airsim"
+version = "0.1.0"
+authors = ["o0Ignition0o <jeremy.lempereur@gmail.com>"]
+edition = "2018"
+description = "an unofficial Airsim SDK written in Rust"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-std = { version="1.4.0", features = ["unstable"] }
+rmp-rpc = "0.3.0"
+rmpv = "0.4.3"
+lazy_static = "1.4.0"
+serde_derive = "1.0.104"
