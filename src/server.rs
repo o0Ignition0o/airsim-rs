@@ -1,7 +1,7 @@
-use crate::message::{Message, Notification, Request, Response};
 use async_std::io::prelude::*;
 use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use async_std::prelude::*;
+use rmp_rpc::message::{Message, Notification, Request, Response};
 use std::io::Cursor;
 
 pub async fn listen(addrs: impl ToSocketAddrs) -> std::io::Result<()> {
