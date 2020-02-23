@@ -48,6 +48,14 @@ impl Car {
         self.send_car_controls().await
     }
 
+    pub async fn go_forward(&mut self) -> std::io::Result<()> {
+        self.controls.is_manual_gear = false;
+        self.controls.manual_gear = 0;
+        self.controls.throttle = 1.;
+        self.controls.steering = 0.;
+        self.send_car_controls().await
+    }
+
     pub async fn go_backward(&mut self) -> std::io::Result<()> {
         self.controls.is_manual_gear = true;
         self.controls.manual_gear = -1;

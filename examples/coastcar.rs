@@ -1,0 +1,82 @@
+use airsim::car::Car;
+use async_std::task;
+use std::time::Duration;
+
+async fn drive_to_main_road(car: &mut Car) -> std::io::Result<()> {
+    // start
+    car.go_forward().await?;
+    task::sleep(Duration::from_secs(1)).await;
+    // first turn
+    car.turn_left().await?;
+    task::sleep(Duration::from_millis(300)).await;
+
+    car.go_forward().await?;
+    task::sleep(Duration::from_millis(900)).await;
+    // second turn
+    car.turn_right().await?;
+    task::sleep(Duration::from_millis(250)).await;
+    car.go_forward().await?;
+    task::sleep(Duration::from_millis(1750)).await;
+    car.turn_right().await?;
+    task::sleep(Duration::from_millis(750)).await;
+    car.go_forward().await?;
+    println!("I should be on the main road now");
+    Ok(())
+}
+
+async fn drive_first_long_left_turn(car: &mut Car) -> std::io::Result<()> {
+    car.turn_left().await?;
+    task::sleep(Duration::from_millis(400)).await;
+    car.go_forward().await?;
+    task::sleep(Duration::from_millis(1750)).await;
+    println!("Start turning left now");
+    car.turn_left().await?;
+    task::sleep(Duration::from_millis(500)).await;
+    car.go_forward().await?;
+    task::sleep(Duration::from_millis(750)).await;
+    car.turn_left().await?;
+    task::sleep(Duration::from_millis(500)).await;
+    car.go_forward().await?;
+    Ok(())
+}
+
+async fn drive_sharp_right(car: &mut Car) -> std::io::Result<()> {
+    car.go_forward().await?;
+    task::sleep(Duration::from_secs(1)).await;
+    println!("Start turning sharp right now");
+    car.turn_right().await?;
+    task::sleep(Duration::from_millis(1500)).await;
+    car.go_forward().await?;
+    Ok(())
+}
+
+async fn drive_sharp_left(car: &mut Car) -> std::io::Result<()> {
+    car.go_forward().await?;
+    task::sleep(Duration::from_millis(500)).await;
+    println!("Start turning sharp left now");
+    car.turn_left().await?;
+    task::sleep(Duration::from_secs(2)).await;
+    car.go_forward().await?;
+    Ok(())
+}
+
+async fn run_car() -> std::io::Result<()> {
+    let address = "127.0.0.1:41451";
+    let mut car = Car::connect(address).await?;
+    car.reset().await?;
+    println!("server version is: {}", car.get_server_version().await?);
+    task::sleep(Duration::from_secs(5)).await;
+
+    drive_to_main_road(&mut car).await?;
+    drive_first_long_left_turn(&mut car).await?;
+    drive_sharp_right(&mut car).await?;
+    drive_sharp_left(&mut car).await?;
+
+    car.stop().await?;
+    println!("Hammertime!");
+    Ok(())
+}
+
+fn main() -> std::io::Result<()> {
+    task::block_on(run_car())
+}
