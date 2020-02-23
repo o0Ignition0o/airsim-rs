@@ -1,12 +1,12 @@
-use crate::message::{Message, Notification, Request, Response};
 use async_std::io;
 use async_std::io::prelude::*;
 use async_std::net::{TcpStream, ToSocketAddrs};
 use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
+use rmp_rpc::message::{Message, Notification, Request, Response};
 use std::collections::HashMap;
-use std::io::{Cursor, Error};
+use std::io::Cursor;
 use std::time::Duration;
 
 pub struct Client {
@@ -14,7 +14,7 @@ pub struct Client {
     notification_sender: Sender<Notification>,
     pub notification_receiver: Receiver<Notification>,
     pub request_receiver: Receiver<Request>,
-    response_channels: Arc<Mutex<HashMap<usize, Sender<Response>>>>,
+    response_channels: Arc<Mutex<HashMap<u32, Sender<Response>>>>,
 }
 
 impl Client {
@@ -30,7 +30,7 @@ impl Client {
 
         task::spawn(async move {
             let mut current_message: Vec<u8> = vec![];
-            let mut buf = vec![0u8; 1024];
+            let mut buf = vec![0_u8; 1024];
             loop {
                 // Send request
                 if !request_receiver.is_empty() {
@@ -84,8 +84,12 @@ impl Client {
                                 return Ok(());
                             }
                         };
-                        let (_, remaining) = current_message.split_at(frame.position() as usize);
-                        current_message = remaining.to_vec();
+                        #[allow(clippy::cast_possible_truncation)]
+                        {
+                            let (_, remaining) =
+                                current_message.split_at(frame.position() as usize);
+                            current_message = remaining.to_vec();
+                        }
                     }
                     Ok(())
                 })
@@ -99,10 +103,6 @@ impl Client {
             request_receiver: inner_request_receiver,
             response_channels,
         })
-    }
-
-    pub fn request_sync(&self, request: Request) -> Result<Option<Response>, Error> {
-        task::block_on(self.request(request))
     }
 
     pub async fn request(&self, request: Request) -> std::io::Result<Option<Response>> {

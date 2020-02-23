@@ -1,12 +1,11 @@
+pub mod airsim;
 pub mod car;
-pub mod client;
+pub mod controller;
 pub mod errors;
-pub mod message;
-pub mod server;
+mod msgpack;
 
-extern crate serde_derive;
-
-extern crate async_std;
+#[macro_use]
+extern crate async_trait;
 
 #[cfg(test)]
 mod tests {
