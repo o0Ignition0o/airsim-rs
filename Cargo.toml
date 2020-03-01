@@ -1,6 +1,6 @@
 [package]
 name = "airsim"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["o0Ignition0o <jeremy.lempereur@gmail.com>"]
 edition = "2018"
 description = "an unofficial Airsim SDK written in Rust"
