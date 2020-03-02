@@ -1,13 +1,13 @@
-use async_std::io;
 use async_std::io::prelude::*;
 use async_std::net::{TcpStream, ToSocketAddrs};
 use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
+use futures::future::FutureExt;
+use futures::select;
 use rmp_rpc::message::{Message, Notification, Request, Response};
 use std::collections::HashMap;
 use std::io::Cursor;
-use std::time::Duration;
 
 pub struct Client {
     request_sender: Sender<Request>,
@@ -15,6 +15,11 @@ pub struct Client {
     pub notification_receiver: Receiver<Notification>,
     pub request_receiver: Receiver<Request>,
     response_channels: Arc<Mutex<HashMap<u32, Sender<Response>>>>,
+}
+
+enum ToDo {
+    Send(Message),
+    Receive(usize),
 }
 
 impl Client {
@@ -32,38 +37,38 @@ impl Client {
             let mut current_message: Vec<u8> = vec![];
             let mut buf = vec![0_u8; 1024];
             loop {
-                // Send request
-                if !request_receiver.is_empty() {
-                    let request = request_receiver
-                        .recv()
-                        .await
-                        .expect("non empty channel receiver didn't yield any message");
-                    let message = &Message::Request(request)
-                        .pack()
-                        .expect("Couldn't serialize message");
-                    stream
-                        .write_all(message)
-                        .await
-                        .expect("couldn't send message");
-                }
-
-                // Send notification
-                if !notification_receiver.is_empty() {
-                    let notification = notification_receiver
-                        .recv()
-                        .await
-                        .expect("non empty channel receiver didn't yield any message");
-                    let message = &Message::Notification(notification)
-                        .pack()
-                        .expect("Couldn't serialize message");
-                    stream
-                        .write_all(message)
-                        .await
-                        .expect("couldn't send message");
-                }
-                // Receive data
-                let _ = io::timeout(Duration::from_millis(1), async {
-                    while let Ok(n) = stream.read(&mut buf).await {
+                let to_process = select! {
+                    maybe_request = request_receiver.recv().fuse() => {
+                        if let Some(request) = maybe_request {
+                            Some(ToDo::Send(Message::Request(request)))
+                        } else {
+                            None
+                        }
+                    },
+                    maybe_notification = notification_receiver.recv().fuse() => {
+                        if let Some(notification) = maybe_notification {
+                            Some(ToDo::Send(Message::Notification(notification)))
+                        } else {
+                            None
+                        }
+                    },
+                    maybe_bytes_read = stream.read(&mut buf).fuse() => {
+                        if let Ok(bytes_read) = maybe_bytes_read {
+                            Some(ToDo::Receive(bytes_read))
+                        } else {
+                            None
+                        }
+                    }
+                };
+                match to_process {
+                    Some(ToDo::Send(m)) => {
+                        let message = m.pack().expect("Couldn't serialize message");
+                        stream
+                            .write_all(&message)
+                            .await
+                            .expect("couldn't send message");
+                    }
+                    Some(ToDo::Receive(n)) => {
                         current_message.extend(&buf[..n]);
                         let mut frame = Cursor::new(current_message.clone());
                         match Message::decode(&mut frame) {
@@ -80,8 +85,9 @@ impl Client {
                                     .expect("Got response but no request awaiting it");
                                 sender.send(r).await;
                             }
-                            Err(_) => {
-                                return Ok(());
+                            Err(e) => {
+                                // TODO: let's figure something out!
+                                panic!(e);
                             }
                         };
                         #[allow(clippy::cast_possible_truncation)]
@@ -91,9 +97,8 @@ impl Client {
                             current_message = remaining.to_vec();
                         }
                     }
-                    Ok(())
-                })
-                .await;
+                    None => {}
+                }
             }
         });
         Ok(Self {
