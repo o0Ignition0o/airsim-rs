@@ -1,6 +1,5 @@
-use crate::controller;
-use crate::controller::Car;
 use crate::airsim::{CarControls, Client};
+use crate::controller;
 use async_std::task;
 use async_trait::async_trait;
 use glutin::event::VirtualKeyCode;
@@ -22,36 +21,28 @@ impl controller::Car for Controller {
     async fn setup(&self) -> Result<()> {
         self.client.reset().await
     }
-    fn get_car_controls(&mut self) -> CarControls {
-        if self.keyboard.up {
-            if self.car_controls.throttle <= 0.8 {
-                self.car_controls.throttle += THROTTLE_INTERVAL;
-            }
-        } else if self.keyboard.down && self.car_controls.throttle >= 0.2 {
-            self.car_controls.throttle -= THROTTLE_INTERVAL;
-        }
-        if self.keyboard.left {
-            if self.car_controls.steering > 0. {
-                self.car_controls.steering = 0.;
-            }
-            if self.car_controls.steering >= -0.8 {
-                self.car_controls.steering -= STEERING_INTERVAL;
-            }
-        } else if self.keyboard.right {
-            if self.car_controls.steering < 0. {
-                self.car_controls.steering = 0.;
-            }
-            if self.car_controls.steering <= 0.8 {
-                self.car_controls.steering += STEERING_INTERVAL;
-            }
-        } else {
-            self.car_controls.steering = 0.;
-        }
-        self.car_controls.clone()
-    }
 
-    async fn send_car_controls(&self, controls: CarControls) -> Result<()> {
-        self.client.send_car_controls(&controls).await
+    fn run(mut self) {
+        EventLoop::new().run(move |event, _, control_flow| {
+            if let glutin::event::Event::DeviceEvent { event, .. } = event {
+                if let glutin::event::DeviceEvent::Key(input) = event {
+                    if input.state == glutin::event::ElementState::Pressed {
+                        if let Some(key) = input.virtual_keycode {
+                            self.handle_key_press(key);
+                        }
+                    }
+                    if input.state == glutin::event::ElementState::Released {
+                        if let Some(key) = input.virtual_keycode {
+                            self.handle_key_release(key);
+                        }
+                    }
+                }
+            }
+            let car_controls = self.get_car_controls();
+            task::block_on(self.send_car_controls(car_controls))
+                .expect("couldn't send car controls");
+            *control_flow = self.get_next_control_flow();
+        });
     }
 }
 
@@ -105,30 +96,36 @@ impl Controller {
         }
     }
 
-    pub fn run(mut self) {
-        EventLoop::new().run(move |event, _, control_flow| {
-            if let glutin::event::Event::DeviceEvent { event, .. } = event {
-                // handle keyboard and mouse
-                if let glutin::event::DeviceEvent::Key(input) = event {
-                    if input.state == glutin::event::ElementState::Pressed {
-                        if let Some(key) = input.virtual_keycode {
-                            self.handle_key_press(key);
-                        }
-                    }
-                    if input.state == glutin::event::ElementState::Released {
-                        if let Some(key) = input.virtual_keycode {
-                            self.handle_key_release(key);
-                        }
-                    }
-                }
+    fn get_car_controls(&mut self) -> CarControls {
+        if self.keyboard.up {
+            if self.car_controls.throttle <= 0.8 {
+                self.car_controls.throttle += THROTTLE_INTERVAL;
             }
-            let car_controls = self.get_car_controls();
-            task::block_on(self.send_car_controls(car_controls))
-                .expect("couldn't send car controls");
-            *control_flow = self.get_next_control_flow();
-        });
+        } else if self.keyboard.down && self.car_controls.throttle >= 0.2 {
+            self.car_controls.throttle -= THROTTLE_INTERVAL;
+        }
+        if self.keyboard.left {
+            if self.car_controls.steering > 0. {
+                self.car_controls.steering = 0.;
+            }
+            if self.car_controls.steering >= -0.8 {
+                self.car_controls.steering -= STEERING_INTERVAL;
+            }
+        } else if self.keyboard.right {
+            if self.car_controls.steering < 0. {
+                self.car_controls.steering = 0.;
+            }
+            if self.car_controls.steering <= 0.8 {
+                self.car_controls.steering += STEERING_INTERVAL;
+            }
+        } else {
+            self.car_controls.steering = 0.;
+        }
+        self.car_controls.clone()
     }
-
+    async fn send_car_controls(&self, controls: CarControls) -> Result<()> {
+        self.client.send_car_controls(&controls).await
+    }
     fn get_next_control_flow(&self) -> ControlFlow {
         if self.keyboard.escape {
             ControlFlow::Exit
