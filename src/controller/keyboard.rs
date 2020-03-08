@@ -97,25 +97,39 @@ impl Controller {
     }
 
     fn get_car_controls(&mut self) -> CarControls {
+        // Throttle management
         if self.keyboard.up {
-            if self.car_controls.throttle <= 0.8 {
+            self.car_controls.brake = 0.;
+            if self.car_controls.throttle <= 1. - THROTTLE_INTERVAL {
                 self.car_controls.throttle += THROTTLE_INTERVAL;
             }
-        } else if self.keyboard.down && self.car_controls.throttle >= 0.2 {
+        } else if self.car_controls.throttle >= THROTTLE_INTERVAL {
             self.car_controls.throttle -= THROTTLE_INTERVAL;
         }
+
+        // Brakes management
+        if self.keyboard.down {
+            self.car_controls.throttle = 0.;
+            if self.car_controls.brake <= 1. - THROTTLE_INTERVAL {
+                self.car_controls.brake += THROTTLE_INTERVAL;
+            }
+        } else if self.car_controls.brake >= THROTTLE_INTERVAL {
+            self.car_controls.brake -= THROTTLE_INTERVAL;
+        }
+
+        // Steering management
         if self.keyboard.left {
             if self.car_controls.steering > 0. {
                 self.car_controls.steering = 0.;
             }
-            if self.car_controls.steering >= -0.8 {
+            if self.car_controls.steering >= -(1. - THROTTLE_INTERVAL) {
                 self.car_controls.steering -= STEERING_INTERVAL;
             }
         } else if self.keyboard.right {
             if self.car_controls.steering < 0. {
                 self.car_controls.steering = 0.;
             }
-            if self.car_controls.steering <= 0.8 {
+            if self.car_controls.steering <= (1. - THROTTLE_INTERVAL) {
                 self.car_controls.steering += STEERING_INTERVAL;
             }
         } else {
