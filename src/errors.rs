@@ -15,7 +15,7 @@ pub enum DecodeError {
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        error::Error::description(self).fmt(f)
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -42,7 +42,7 @@ impl From<io::Error> for DecodeError {
             io::ErrorKind::UnexpectedEof => DecodeError::Truncated,
             io::ErrorKind::Other => {
                 if let Some(cause) = err.get_ref().unwrap().source() {
-                    if cause.description() == "type mismatch" {
+                    if cause.to_string() == "type mismatch" {
                         return DecodeError::Invalid;
                     }
                 }
