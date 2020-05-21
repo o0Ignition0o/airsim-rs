@@ -16,6 +16,8 @@ glutin = { version="0.23.0", optional = true }
 async-trait = "0.1.24"
 futures = "0.3.4"
 gilrs = "0.7.4"
+irc = "0.13.6"
+lazy_static = "1.4.0"
 
 [features]
 keyboard = ["glutin"]
