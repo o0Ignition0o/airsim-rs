@@ -18,6 +18,8 @@ futures = "0.3.4"
 gilrs = "0.7.4"
 irc = "0.13.6"
 lazy_static = "1.4.0"
+rust-webvr = {version = "0.19", optional = true }
 
 [features]
 keyboard = ["glutin"]
+vr = ["rust-webvr"]
