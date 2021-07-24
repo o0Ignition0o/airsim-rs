@@ -1,6 +1,7 @@
+use crate::errors::NetworkResult;
+use async_std::channel::{bounded, Receiver, RecvError, Sender};
 use async_std::io::prelude::*;
 use async_std::net::{TcpStream, ToSocketAddrs};
-use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use futures::future::FutureExt;
@@ -23,14 +24,14 @@ enum ToDo {
 }
 
 impl Client {
-    pub async fn connect(addrs: impl ToSocketAddrs) -> std::io::Result<Self> {
+    pub async fn connect(addrs: impl ToSocketAddrs) -> NetworkResult<Self> {
         let mut stream = TcpStream::connect(addrs).await?;
         let response_channels = Arc::new(Mutex::new(HashMap::new()));
 
-        let (request_sender, request_receiver) = channel::<Request>(1);
-        let (inner_request_sender, inner_request_receiver) = channel::<Request>(1);
-        let (notification_sender, notification_receiver) = channel::<Notification>(1);
-        let (inner_notification_sender, inner_notification_receiver) = channel::<Notification>(1);
+        let (request_sender, request_receiver) = bounded::<Request>(1);
+        let (inner_request_sender, inner_request_receiver) = bounded::<Request>(1);
+        let (notification_sender, notification_receiver) = bounded::<Notification>(1);
+        let (inner_notification_sender, inner_notification_receiver) = bounded::<Notification>(1);
         let res_channels = Arc::clone(&response_channels);
 
         task::spawn(async move {
@@ -39,14 +40,14 @@ impl Client {
             loop {
                 let to_process = select! {
                     maybe_request = request_receiver.recv().fuse() => {
-                        if let Some(request) = maybe_request {
+                        if let Ok(request) = maybe_request {
                             Some(ToDo::Send(Message::Request(request)))
                         } else {
                             None
                         }
                     },
                     maybe_notification = notification_receiver.recv().fuse() => {
-                        if let Some(notification) = maybe_notification {
+                        if let Ok(notification) = maybe_notification {
                             Some(ToDo::Send(Message::Notification(notification)))
                         } else {
                             None
@@ -110,8 +111,8 @@ impl Client {
         })
     }
 
-    pub async fn request(&self, request: Request) -> std::io::Result<Option<Response>> {
-        let (response_sender, response_receiver) = channel(1);
+    pub async fn request(&self, request: Request) -> Result<Response, RecvError> {
+        let (response_sender, response_receiver) = bounded(1);
 
         // TODO: check if there was something
         let _ = self
@@ -121,10 +122,10 @@ impl Client {
             .insert(request.id, response_sender);
 
         self.request_sender.send(request).await;
-        Ok(response_receiver.recv().await)
+        response_receiver.recv().await
     }
 
-    pub async fn notify(&self, notification: Notification) -> std::io::Result<()> {
+    pub async fn notify(&self, notification: Notification) -> Result<(), RecvError> {
         self.notification_sender.send(notification).await;
         Ok(())
     }

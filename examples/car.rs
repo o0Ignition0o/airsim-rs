@@ -1,8 +1,8 @@
-use airsim::{airsim::Client, car::Car};
+use airsim::{airsim::Client, car::Car, errors::NetworkResult};
 use async_std::task;
 use std::time::Duration;
 
-async fn run_car() -> std::io::Result<()> {
+async fn run_car() -> NetworkResult<()> {
     let address = "127.0.0.1:41451";
     let client = Client::connect(address).await?;
     client.reset().await?;
@@ -20,6 +20,6 @@ async fn run_car() -> std::io::Result<()> {
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> NetworkResult<()> {
     task::block_on(run_car())
 }

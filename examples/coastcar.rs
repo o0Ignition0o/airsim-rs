@@ -1,8 +1,9 @@
+use airsim::errors::NetworkResult;
 use airsim::{airsim::Client, car::Car};
 use async_std::task;
 use std::time::Duration;
 
-async fn drive_to_main_road(car: &mut Car) -> std::io::Result<()> {
+async fn drive_to_main_road(car: &mut Car) -> NetworkResult<()> {
     // start
     car.go_forward().await?;
     task::sleep(Duration::from_secs(1)).await;
@@ -24,7 +25,7 @@ async fn drive_to_main_road(car: &mut Car) -> std::io::Result<()> {
     Ok(())
 }
 
-async fn drive_first_long_left_turn(car: &mut Car) -> std::io::Result<()> {
+async fn drive_first_long_left_turn(car: &mut Car) -> NetworkResult<()> {
     car.go_left().await?;
     task::sleep(Duration::from_millis(400)).await;
     car.go_forward().await?;
@@ -40,7 +41,7 @@ async fn drive_first_long_left_turn(car: &mut Car) -> std::io::Result<()> {
     Ok(())
 }
 
-async fn drive_sharp_right(car: &mut Car) -> std::io::Result<()> {
+async fn drive_sharp_right(car: &mut Car) -> NetworkResult<()> {
     car.go_forward().await?;
     task::sleep(Duration::from_secs(1)).await;
     println!("Start turning sharp right now");
@@ -50,7 +51,7 @@ async fn drive_sharp_right(car: &mut Car) -> std::io::Result<()> {
     Ok(())
 }
 
-async fn drive_sharp_left(car: &mut Car) -> std::io::Result<()> {
+async fn drive_sharp_left(car: &mut Car) -> NetworkResult<()> {
     car.go_forward().await?;
     task::sleep(Duration::from_millis(500)).await;
     println!("Start turning sharp left now");
@@ -60,7 +61,7 @@ async fn drive_sharp_left(car: &mut Car) -> std::io::Result<()> {
     Ok(())
 }
 
-async fn run_car() -> std::io::Result<()> {
+async fn run_car() -> NetworkResult<()> {
     let address = "127.0.0.1:41451";
     let client = Client::connect(address).await?;
     client.reset().await?;
@@ -77,6 +78,6 @@ async fn run_car() -> std::io::Result<()> {
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> NetworkResult<()> {
     task::block_on(run_car())
 }

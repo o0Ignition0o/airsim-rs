@@ -1,9 +1,13 @@
+use airsim::airsim::Client;
 use airsim::controller::Car;
-use airsim::{airsim::Client, controller::keyboard::Controller};
+use airsim::errors::NetworkResult;
 use async_std::task;
-use std::io::Result;
 
-async fn run_car() -> Result<()> {
+#[cfg(feature = "keyboard")]
+use airsim::controller::keyboard::Controller;
+
+#[cfg(feature = "keyboard")]
+async fn run_car() -> NetworkResult<()> {
     let address = "127.0.0.1:41451";
     let controller = Controller::new(Client::connect(address).await?);
     controller.setup().await?;
@@ -11,6 +15,11 @@ async fn run_car() -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+#[cfg(not(feature = "keyboard"))]
+async fn run_car() -> NetworkResult<()> {
+    panic!("you must run this example with the keyboard features")
+}
+
+fn main() -> NetworkResult<()> {
     task::block_on(run_car())
 }

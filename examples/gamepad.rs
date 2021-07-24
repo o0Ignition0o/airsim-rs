@@ -1,8 +1,8 @@
 use airsim::airsim::{CarControls, Client};
+use airsim::errors::NetworkResult;
 use async_std::task;
 use core::time::Duration;
 use gilrs::{Axis, Button, Event, Gilrs};
-use std::io::Result;
 
 const REFRESH_INTERVAL: Duration = Duration::from_millis(16);
 const STEERING_INTERVAL: f64 = 0.2;
@@ -73,7 +73,7 @@ impl GamepadController {
     }
 }
 
-async fn run_car() -> std::io::Result<()> {
+async fn run_car() -> NetworkResult<()> {
     let address = "127.0.0.1:41451";
 
     let mut gilrs = Gilrs::new().unwrap();
@@ -111,7 +111,6 @@ async fn run_car() -> std::io::Result<()> {
                 gamepad_controller.gamepad.analog_throttle = gamepad.state().value(right_trigger);
             }
 
-            
             if let Some(left_trigger) = gamepad.button_code(Button::LeftTrigger2) {
                 gamepad_controller.gamepad.analog_break = gamepad.state().value(left_trigger);
             }
@@ -151,6 +150,6 @@ async fn run_car() -> std::io::Result<()> {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> NetworkResult<()> {
     task::block_on(run_car())
 }

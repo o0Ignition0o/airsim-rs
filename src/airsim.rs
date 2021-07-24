@@ -1,5 +1,8 @@
-use crate::msgpack::Client as MsgPackClient;
-use async_std::net::ToSocketAddrs;
+use crate::{
+    errors::{NetworkError, NetworkResult},
+    msgpack::Client as MsgPackClient,
+};
+use async_std::{channel::RecvError, net::ToSocketAddrs};
 use rmp_rpc::message::{Notification, Request, Response};
 use rmpv::Value;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -10,7 +13,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect(addrs: impl ToSocketAddrs) -> std::io::Result<Self> {
+    pub async fn connect(addrs: impl ToSocketAddrs) -> NetworkResult<Self> {
         let car = Self {
             last_request_id: AtomicU32::new(0),
             client: MsgPackClient::connect(addrs).await?,
@@ -20,7 +23,7 @@ impl Client {
         Ok(car)
     }
 
-    pub async fn ping(&self) -> std::io::Result<Option<Response>> {
+    pub async fn ping(&self) -> NetworkResult<Response> {
         self.client
             .request(Request {
                 id: self.new_request_id(),
@@ -28,44 +31,42 @@ impl Client {
                 params: Vec::new(),
             })
             .await
+            .map_err(Into::into)
     }
 
-    pub async fn reset(&self) -> std::io::Result<()> {
+    pub async fn reset(&self) -> NetworkResult<()> {
         self.client
             .notify(Notification {
                 method: "reset".to_string(),
                 params: Vec::new(),
             })
-            .await?;
+            .await
+            .map_err::<NetworkError, _>(Into::into)?;
         Ok(())
     }
 
-    pub async fn get_client_version(&self) -> std::io::Result<String> {
+    pub async fn get_client_version(&self) -> NetworkResult<String> {
         Ok("1".to_string())
     }
 
-    pub async fn get_server_version(&self) -> std::io::Result<i64> {
-        if let Some(res) = self
-            .client
+    pub async fn get_server_version(&self) -> NetworkResult<i64> {
+        self.client
             .request(Request {
                 id: self.new_request_id(),
                 method: "getServerVersion".to_string(),
                 params: Vec::new(),
             })
-            .await?
-        {
-            Ok(res
-                .result
-                .unwrap_or_else(|_| rmpv::Value::Integer(0.into()))
-                .as_i64()
-                .unwrap_or(0))
-        } else {
-            //TODO: Error handling
-            Ok(0)
-        }
+            .await
+            .map(|res| {
+                res.result
+                    .unwrap_or_else(|_| rmpv::Value::Integer(0.into()))
+                    .as_i64()
+                    .unwrap_or(0)
+            })
+            .map_err(Into::into)
     }
 
-    pub async fn send_car_controls(&self, controls: &CarControls) -> std::io::Result<()> {
+    pub async fn send_car_controls(&self, controls: &CarControls) -> NetworkResult<()> {
         self.client
             .request(Request {
                 id: self.new_request_id(),
@@ -76,7 +77,7 @@ impl Client {
         Ok(())
     }
 
-    async fn enable_api_control(&self) -> std::io::Result<bool> {
+    async fn enable_api_control(&self) -> Result<bool, RecvError> {
         self.client
             .request(Request {
                 id: self.new_request_id(),
@@ -87,8 +88,7 @@ impl Client {
                 ],
             })
             .await?;
-        if let Some(response) = self
-            .client
+        self.client
             .request(Request {
                 id: self.new_request_id(),
                 method: "enableApiControl".to_string(),
@@ -97,12 +97,11 @@ impl Client {
                     rmp_rpc::Value::String("".into()),
                 ],
             })
-            .await?
-        {
-            Ok(response.result.is_ok() && response.result.unwrap().as_bool() == Some(true))
-        } else {
-            Ok(false)
-        }
+            .await
+            .map_err(Into::into)
+            .map(|response| {
+                response.result.is_ok() && response.result.unwrap().as_bool() == Some(true)
+            })
     }
 
     fn new_request_id(&self) -> u32 {

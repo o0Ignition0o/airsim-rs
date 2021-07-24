@@ -1,4 +1,5 @@
 use crate::airsim::{CarControls, Client};
+use crate::errors::NetworkResult;
 
 pub struct Car {
     client: Client,
@@ -13,29 +14,29 @@ impl Car {
         }
     }
 
-    pub async fn send_controls(&mut self) -> std::io::Result<()> {
+    pub async fn send_controls(&mut self) -> NetworkResult<()> {
         self.client.send_car_controls(&self.controls).await
     }
 
-    pub async fn go_right(&mut self) -> std::io::Result<()> {
+    pub async fn go_right(&mut self) -> NetworkResult<()> {
         self.steer_right();
         self.throttle_down();
         self.send_controls().await
     }
 
-    pub async fn go_left(&mut self) -> std::io::Result<()> {
+    pub async fn go_left(&mut self) -> NetworkResult<()> {
         self.steer_left();
         self.throttle_up();
         self.send_controls().await
     }
 
-    pub async fn go_forward(&mut self) -> std::io::Result<()> {
+    pub async fn go_forward(&mut self) -> NetworkResult<()> {
         self.steer_straight();
         self.throttle_up();
         self.send_controls().await
     }
 
-    pub async fn go_backwards(&mut self) -> std::io::Result<()> {
+    pub async fn go_backwards(&mut self) -> NetworkResult<()> {
         self.controls.manual_gear = -1;
         self.controls.throttle = -1.;
         self.controls.steering = 0.;
@@ -43,7 +44,7 @@ impl Car {
         self.send_controls().await
     }
 
-    pub async fn stop(&mut self) -> std::io::Result<()> {
+    pub async fn stop(&mut self) -> NetworkResult<()> {
         self.steer_straight();
         self.throttle_down();
         self.send_controls().await
