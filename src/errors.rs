@@ -1,5 +1,26 @@
+use async_std::channel::RecvError;
 use rmpv::decode;
 use std::{error, fmt, io};
+
+pub type NetworkResult<T> = Result<T, NetworkError>;
+
+#[derive(Debug)]
+pub enum NetworkError {
+    Recv(RecvError),
+    Io(io::Error),
+}
+
+impl From<async_std::channel::RecvError> for NetworkError {
+    fn from(e: async_std::channel::RecvError) -> Self {
+        Self::Recv(e)
+    }
+}
+
+impl From<io::Error> for NetworkError {
+    fn from(e: io::Error) -> Self {
+        Self::Io(e)
+    }
+}
 
 /// Error while decoding a sequence of bytes into a `MessagePack-RPC` message
 #[derive(Debug)]

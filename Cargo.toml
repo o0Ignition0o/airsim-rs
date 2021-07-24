@@ -9,13 +9,13 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = { version="1.5.0", features = ["unstable"] }
-rmp-rpc = "0.3.0"
-rmpv = "0.4.4"
-glutin = { version="0.23.0", optional = true }
-async-trait = "0.1.24"
-futures = "0.3.4"
-gilrs = "0.7.4"
+async-std = { version="1.5", features = ["unstable"] }
+rmp-rpc = "0.3"
+rmpv = "0.4"
+glutin = { version="0.27", optional = true }
+async-trait = "0.1"
+futures = "0.3"
+gilrs = "0.8"
 
 [features]
 keyboard = ["glutin"]
